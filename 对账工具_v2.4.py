@@ -1,8 +1,8 @@
 """
-智能对账工具 - Streamlit 应用 v3.0
-场景化引导模式 + 智能字段精确映射 + 完整勾稽逻辑
-版本：v3.0（正式版）
-日期：2026-04-23
+智能对账工具 - Streamlit 应用 v3.1
+场景化引导模式 + 智能字段精确映射 + 场景1公式适配
+版本：v3.1
+日期：2026-05-13
 """
 
 import streamlit as st
@@ -14,7 +14,7 @@ import re
 
 # ==================== 页面配置 ====================
 st.set_page_config(
-    page_title="智能对账工具 v3.0",
+    page_title="智能对账工具 v3.1",
     page_icon="🤖",
     layout="wide"
 )
@@ -30,7 +30,7 @@ def smart_match_field(columns, field_type):
         'amount_should': ['应还金额'],
         'price': ['产品单价', '单价'],
         'quantity': ['产品数量', '数量', '清分数量'],
-        'fulfill_quantity': ['履约数量'],
+        'fulfill_quantity': ['实际履约数量', '履约数量'],
         'currency': ['汇率'],
         # 场景2
         'bill_no': ['账单号'],
@@ -115,13 +115,12 @@ def reconcile_scenario1(dfs, mapping):
     df_sheet1['_订单号标准化'] = df_sheet1[mapping['sheet1_order']].apply(normalize_order_id)
     df_sheet2['_订单号标准化'] = df_sheet2[mapping['sheet2_order']].apply(normalize_order_id)
     
-    # Sheet2计算字段（不四舍五入，保持原始精度）
+    # Sheet2计算字段：单价×实际履约数量×汇率（不四舍五入，保持原始精度）
     calc_fields = mapping['calc_fields']
     df_sheet2['_计算金额_原始'] = (
         pd.to_numeric(df_sheet2[calc_fields[0]], errors='coerce').fillna(0) *
         pd.to_numeric(df_sheet2[calc_fields[1]], errors='coerce').fillna(0) *
-        pd.to_numeric(df_sheet2[calc_fields[2]], errors='coerce').fillna(0) *
-        pd.to_numeric(df_sheet2[calc_fields[3]], errors='coerce').fillna(0)
+        pd.to_numeric(df_sheet2[calc_fields[2]], errors='coerce').fillna(0)
     )
     
     # 按标准化订单号汇总Sheet2后，再四舍五入
@@ -472,7 +471,7 @@ def display_result(result, scenario):
 
 # ==================== 主界面 ====================
 
-st.title("🤖 智能对账工具 v3.0")
+st.title("🤖 智能对账工具 v3.1")
 st.markdown("**选择场景 → 上传文件 → 一键对账**")
 st.divider()
 
@@ -484,7 +483,7 @@ SCENARIOS = {
         "rules": [
             "📋 Sheet1：萝卜头单号 + 应还金额",
             "📋 Sheet2：子订单号 → 汇总计算 → 金额勾稽",
-            "📊 计算字段：单价×数量×履约数×汇率（四舍五入4位）",
+            "📊 计算字段：单价×实际履约数量×汇率（四舍五入4位）",
             "📊 总金额勾稽：应还/待还总额向上舍入"
         ]
     },
@@ -616,22 +615,20 @@ if scenario:
                 sheet2_cols = all_dfs['sheet2'].columns.tolist()
                 sheet2_order = smart_match_field(sheet2_cols, 'order_child')
                 calc_field1 = smart_match_field(sheet2_cols, 'price')
-                calc_field2 = smart_match_field(sheet2_cols, 'quantity')
-                calc_field3 = smart_match_field(sheet2_cols, 'fulfill_quantity')
-                calc_field4 = smart_match_field(sheet2_cols, 'currency')
+                calc_field2 = smart_match_field(sheet2_cols, 'fulfill_quantity')
+                calc_field3 = smart_match_field(sheet2_cols, 'currency')
                 
-                st.markdown("**📊 计算字段（单价×数量×履约数×汇率）**")
-                calc_col1, calc_col2 = st.columns(2)
+                st.markdown("**📊 计算字段（单价×实际履约数量×汇率）**")
+                calc_col1, calc_col2, calc_col3 = st.columns(3)
                 with calc_col1:
                     calc1 = st.selectbox("产品单价", sheet2_cols, 
                         index=sheet2_cols.index(calc_field1) if calc_field1 in sheet2_cols else 0, key="calc1")
-                    calc2 = st.selectbox("产品数量", sheet2_cols, 
-                        index=sheet2_cols.index(calc_field2) if calc_field2 in sheet2_cols else 0, key="calc2")
                 with calc_col2:
-                    calc3 = st.selectbox("履约数量", sheet2_cols, 
+                    calc2 = st.selectbox("实际履约数量", sheet2_cols, 
+                        index=sheet2_cols.index(calc_field2) if calc_field2 in sheet2_cols else 0, key="calc2")
+                with calc_col3:
+                    calc3 = st.selectbox("汇率", sheet2_cols, 
                         index=sheet2_cols.index(calc_field3) if calc_field3 in sheet2_cols else 0, key="calc3")
-                    calc4 = st.selectbox("汇率", sheet2_cols, 
-                        index=sheet2_cols.index(calc_field4) if calc_field4 in sheet2_cols else 0, key="calc4")
                 
                 sheet2_order_col = st.selectbox("子订单号", sheet2_cols, 
                     index=sheet2_cols.index(sheet2_order) if sheet2_order in sheet2_cols else 0, key="s2_order")
@@ -643,7 +640,7 @@ if scenario:
                     'sheet1_order': sheet1_order_col,
                     'sheet1_amount': sheet1_amount_col,
                     'sheet2_order': sheet2_order_col,
-                    'calc_fields': [calc1, calc2, calc3, calc4],
+                    'calc_fields': [calc1, calc2, calc3],
                     'round_digits': round_digits
                 }
                 
@@ -779,5 +776,5 @@ else:
 st.divider()
 st.markdown("""
 ---
-🤖 **智能对账工具 v3.0** | 正式版
+🤖 **智能对账工具 v3.1** | 场景1公式适配（单价×实际履约数量×汇率）
 """)
