@@ -226,7 +226,7 @@ def reconcile_scenario2(dfs, mapping):
     # 按订单汇总清分数量
     df_order_grouped = df_order.groupby('_订单号标准化').agg({
         mapping['clear_qty']: 'sum',
-        '_原始订单号': 'first',
+        '_原始订单号': lambda x: '|'.join(set(x.dropna())),
         '_授信入账状态': lambda x: '|'.join(set(x.dropna())),
         '_关联授信账单': lambda x: '|'.join(set(x.dropna()))
     }).reset_index()
