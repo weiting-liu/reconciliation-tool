@@ -234,7 +234,8 @@ def reconcile_scenario2(dfs, mapping):
     
     # 只取需要的列进行合并
     bill_for_merge = df_bill[['_订单号标准化', '_原始订单号', '_账单号', '_账单履约数']].copy()
-    order_for_merge = df_order_grouped[['_订单号标准化', '_清分履约数', '_授信入账状态', '_关联授信账单']].copy()
+    order_for_merge = df_order_grouped[['_订单号标准化', '_原始订单号', '_清分履约数', '_授信入账状态', '_关联授信账单']].copy()
+    order_for_merge.rename(columns={'_原始订单号': '_清分_原始订单号'}, inplace=True)
     
     # 合并
     merged = bill_for_merge.merge(order_for_merge, on='_订单号标准化', how='outer')
@@ -270,6 +271,7 @@ def reconcile_scenario2(dfs, mapping):
     display_df = pd.DataFrame({
         '账单号': merged['_账单号'],
         '授信_订单号': merged['_原始订单号'],
+        '萝卜头订单号(清分)': merged['_清分_原始订单号'].fillna(''),
         '授信_履约数': merged['_账单履约数'],
         '清分_履约数': merged['_清分履约数'],
         '入账状态': merged['_授信入账状态'],
